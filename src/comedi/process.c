@@ -19,10 +19,16 @@ rtsyn_comedi_process_immediate(rtsyn_comedi_instance_t *comedi,
         rtsyn_abi_status_t status = RTSYN_ABI_STATUS_OK;
         uint32_t channel = rtsyn_comedi_port_channels[port];
         if (rtsyn_comedi_port_kinds[port] == RTSYN_COMEDI_PORT_KIND_ANALOG_INPUT) {
-            (void)rtsyn_comedi_driver_read_analog(comedi, channel, &comedi->analog_values[port]);
+            if (rtsyn_comedi_driver_read_analog(comedi, channel,
+                                               &comedi->analog_values[port]) < 0) {
+                return RTSYN_ABI_STATUS_ERROR;
+            }
             status = context->api->write(context, port, &comedi->analog_values[port]);
         } else if (rtsyn_comedi_port_kinds[port] == RTSYN_COMEDI_PORT_KIND_DIGITAL_INPUT) {
-            (void)rtsyn_comedi_driver_read_digital(comedi, channel, &comedi->digital_values[port]);
+            if (rtsyn_comedi_driver_read_digital(comedi, channel,
+                                                &comedi->digital_values[port]) < 0) {
+                return RTSYN_ABI_STATUS_ERROR;
+            }
             status = context->api->write(context, port, &comedi->digital_values[port]);
         }
         if (status < 0) {
@@ -44,14 +50,19 @@ rtsyn_comedi_process_terminal(rtsyn_comedi_instance_t *comedi,
         if (rtsyn_comedi_port_kinds[port] == RTSYN_COMEDI_PORT_KIND_ANALOG_OUTPUT) {
             status = context->api->read(context, port, &comedi->analog_values[port]);
             if (status >= 0) {
-                (void)rtsyn_comedi_driver_write_analog(comedi, channel,
-                                                       comedi->analog_values[port]);
+                if (rtsyn_comedi_driver_write_analog(
+                    comedi, channel,
+                    comedi->analog_values[port] * comedi->analog_output_gains[channel]) < 0) {
+                    return RTSYN_ABI_STATUS_ERROR;
+                }
             }
         } else if (rtsyn_comedi_port_kinds[port] == RTSYN_COMEDI_PORT_KIND_DIGITAL_OUTPUT) {
             status = context->api->read(context, port, &comedi->digital_values[port]);
             if (status >= 0) {
-                (void)rtsyn_comedi_driver_write_digital(comedi, channel,
-                                                        comedi->digital_values[port]);
+                if (rtsyn_comedi_driver_write_digital(comedi, channel,
+                                                       comedi->digital_values[port]) < 0) {
+                    return RTSYN_ABI_STATUS_ERROR;
+                }
             }
         }
         if (status < 0) {
